@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> -->
+    <link href="./output.css" rel="stylesheet">
+    <title>D3.js 力导向图 - 开源技术生态系统</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body class="h-screen w-screen bg-linear-to-br from-[#1a2a6c] via-[#b21f1f] to-[#1a2a6c] m-0 p-5 text-white overflow-hidden box-border">
+    <div class="max-w-[1400px] h-full mx-auto my-0 flex flex-col overflow-hidden">
+        <div class="text-center p-5 bg-[rgba(0,0,0,0.3)] rounded-xl mb-5 shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
+            <h1 class="m-0 text-4xl bg-linear-45 from-[#ff7e5f] to-[#feb47b] text-transparent bg-clip-text text-shadow-2xs">D3.js 力导向图 - 开源技术生态系统</h1>
+            <p class="text-xl opacity-90 max-w-[800px] my-2.5 mx-auto">D3.js 是一个用于操作文档的 JavaScript 库，它被设计为与现代浏览器无缝集成。它提供了一个强大的数据驱动的 API，用于转换文档的内容、结构和呈现方式。</p>
+        </div>
+        <div class="flex flex-1 gap-5 bg-[rgba(30,30,50,0.7)] rounded-xl shadow-xl p-5 backdrop-blur-sm overflow-hidden">
+            <div class="flex-1 relative rounded-lg overflow-hidden bg-[rgba(15,15,35,0.8)] shadow-2xl">
+                <svg id="graph"></svg>
+            </div>
+            <div class="w-[300px] h-full bg-[rgba(25,25,45,0.8)] rounded-lg shadow-xl p-5 overflow-y-auto thumb">
+                <div class="mb-8">
+                    <h2 class="text-3xl text-[#ff7e5f] border-b-2 border-solid border-b-[#444] pb-2 mb-4">图例说明</h2>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #ff7e5f;"></div>
+                        <div>JavaScript框架/库</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #feb47b;"></div>
+                        <div>CSS框架/预处理器</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #6a89cc;"></div>
+                        <div>构建工具</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #4a69bd;"></div>
+                        <div>测试框架</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #1e3799;"></div>
+                        <div>状态管理</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #0c2461;"></div>
+                        <div>服务器端技术</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #38ada9;"></div>
+                        <div>数据库</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #079992;"></div>
+                        <div>API/数据格式</div>
+                    </div>
+                </div>
+
+                <div class="bg-[rgba(35,35,55,0.8)] p-4 rounded-lg">
+                    <div class="mb-4">
+                        <label for="charge" class="block mb-2 text-[#feb47b]">节点间斥力: <span id="charge-value">-300</span></label>
+                        <input class="w-full" type="range" id="charge" min="-1000" max="-50" value="-300">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="link-distance" class="block mb-2 text-[#feb47b]">连接距离: <span id="distance-value">60</span></label>
+                        <input class="w-full" type="range" id="link-distance" min="10" max="200" value="60">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="gravity" class="block mb-2 text-[#feb47b]">向心力: <span id="gravity-value">0.1</span></label>
+                        <input class="w-full" type="range" id="gravity" min="0" max="1" step="0.01" value="0.1">
+                    </div>
+                    
+                    <button id="reset-btn" class="w-full p-2.5 bg-[#ff7e5f] text-white hover:bg-amber-500 border-none rounded-sm cursor-pointer mt-2.5">
+                        重置视图
+                    </button>
+                </div>
+                
+                <div class="bg-[rgba(40,40,60,0.9)] p-4 rounded-lg mt-5 border-l-4 border-solid border-[#ff7e5f]">
+                    <h3 class="mt-0 text-[#feb47b]">节点信息</h3>
+                    <p>选择一个节点查看详细信息</p>
+                    <div id="node-details">
+                        <p>悬停或点击节点查看技术详情</p>
+                    </div>
+                </div>
+                
+                <div class="mt-5 p-4 bg-[rgba(45,45,65,0.8)] rounded-lg text-normal">
+                    <h3 class="mt-0 text-[#feb47b] mb-2">操作指南</h3>
+                    <ul class="pl-5">
+                        <li class="mb-2"><strong>拖拽节点</strong>：点击并拖动节点到新位置</li>
+                        <li class="mb-2"><strong>缩放视图</strong>：使用鼠标滚轮缩放整个图表</li>
+                        <li class="mb-2"><strong>平移视图</strong>：在空白区域拖动鼠标可以平移视图</li>
+                        <li class="mb-2"><strong>查看详情</strong>：悬停或点击节点查看技术信息</li>
+                        <li class="mb-2"><strong>调整参数</strong>：使用侧边栏滑块调整布局参数</li>
+                        <li class="mb-2"><strong>重置视图</strong>：点击"重置视图"按钮恢复初始布局</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center p-5 mt-5 text-normal text-[rgba(255,255,255,0.7)]">
+            <p>使用 D3.js v7 开发的力导向图示例 | 展示了开源技术生态系统中的关系 | 数据为模拟数据</p>
+        </div>
+    </div>
+</body>
+</html>

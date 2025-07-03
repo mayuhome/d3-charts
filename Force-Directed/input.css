@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+.legend-item {
+    @apply flex items-center mb-2;
+}
+.legend-color{
+    @apply w-5 h-5 rounded-[50%] mr-2.5 border-2 border-solid border-[rgba(255,255,255,0.5)];
+}
+        .tooltip {
+            position: absolute;
+            background: rgba(25, 25, 45, 0.95);
+            border: 1px solid #ff7e5f;
+            border-radius: 6px;
+            padding: 12px;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            font-size: 14px;
+            max-width: 300px;
+            backdrop-filter: blur(4px);
+        }
+        
+        .tooltip h3 {
+            margin: 0 0 8px 0;
+            color: #ff7e5f;
+            font-size: 16px;
+        }
+        
+        .tooltip p {
+            margin: 5px 0;
+        }
+        
+        .tooltip .category {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
