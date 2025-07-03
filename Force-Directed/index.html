@@ -7,6 +7,7 @@
     <link href="./output.css" rel="stylesheet">
     <title>D3.js 力导向图 - 开源技术生态系统</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="./data.js"></script>
 </head>
 <body class="h-screen w-screen bg-linear-to-br from-[#1a2a6c] via-[#b21f1f] to-[#1a2a6c] m-0 p-5 text-white overflow-hidden box-border">
     <div class="max-w-[1400px] h-full mx-auto my-0 flex flex-col overflow-hidden">
@@ -15,7 +16,7 @@
             <p class="text-xl opacity-90 max-w-[800px] my-2.5 mx-auto">D3.js 是一个用于操作文档的 JavaScript 库，它被设计为与现代浏览器无缝集成。它提供了一个强大的数据驱动的 API，用于转换文档的内容、结构和呈现方式。</p>
         </div>
         <div class="flex flex-1 gap-5 bg-[rgba(30,30,50,0.7)] rounded-xl shadow-xl p-5 backdrop-blur-sm overflow-hidden">
-            <div class="flex-1 relative rounded-lg overflow-hidden bg-[rgba(15,15,35,0.8)] shadow-2xl">
+            <div class="graph-container flex-1 relative rounded-lg overflow-hidden bg-[rgba(15,15,35,0.8)] shadow-2xl">
                 <svg id="graph"></svg>
             </div>
             <div class="w-[300px] h-full bg-[rgba(25,25,45,0.8)] rounded-lg shadow-xl p-5 overflow-y-auto thumb">
@@ -102,5 +103,256 @@
             <p>使用 D3.js v7 开发的力导向图示例 | 展示了开源技术生态系统中的关系 | 数据为模拟数据</p>
         </div>
     </div>
+    <script>
+        // 设置container
+        const width = document.querySelector('.graph-container').clientWidth;
+        const height = document.querySelector('.graph-container').clientHeight;
+        const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+        const svg = d3.select('#graph')
+            .attr('width', width)
+            .attr('height', height)
+            .call(d3.zoom().on('zoom', (e) => {
+                container.attr('transform', e.transform);
+            }))
+            .append('g');
+        // 缩放容器
+        const container = svg.append('g');
+        // tooltip
+        const tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip')
+            .style('opacity', 0);
+
+        // 颜色比例尺
+        const colorScale = d3.scaleOrdinal()
+            .domain([0, 1, 2, 3, 4, 5, 6, 7])
+            .range([
+                "#ff7e5f", // JavaScript框架
+                "#feb47b", // CSS框架
+                "#6a89cc", // 构建工具
+                "#4a69bd", // 测试框架
+                "#1e3799", // 状态管理
+                "#0c2461", // 服务器端
+                "#38ada9", // 数据库
+                "#079992"  // API/数据格式
+            ]);
+
+        // 创建力导向模拟
+        const simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id).distance(60))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => 10 + d.popularity / 5))
+            .force('x', d3.forceX(width / 2).strength(0.05))
+            .force('y', d3.forceY(height / 2).strength(0.05));
+
+        // 创建连线
+        const link = container.append('g')
+            .attr('class', 'links')
+            .selectAll('line')
+            .data(links)
+            .enter()
+            .append('line')
+            .attr('stroke', '#999')
+            .attr('stroke-opacity', 0.6)
+            .attr('stroke-width', d => Math.sqrt(d.value));
+
+        // 创建节点
+        const node = container.append('g')
+            .attr('class', 'nodes')
+            .selectAll('circle')
+            .data(nodes)
+            .enter()
+            .append('circle')
+            .attr('r', d => 10 + d.popularity / 5)
+            .attr('fill', d => colorScale(d.group))
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 1.5)
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended))
+            .on('mouseover', showTooltip)
+            .on('mouseout', hideTooltip)
+            .on('click', showNodeDetails);
+
+        // 添加节点标签
+        const text = container.append('g')
+            .attr('class', 'labels')
+            .selectAll('text')
+            .data(nodes)
+            .enter()
+            .append('text')
+            .text(d => d.id)
+            .attr('font-size', 12)
+            .attr('dx', 15)
+            .attr('dy', 4)
+            .attr('fill', '#fff')
+            .attr('opacity', 0.6);
+
+        // 节点拖拽函数
+        function dragstarted(event, d) {
+            console.log('dragstarted:', event, d);
+            
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            console.log('dragended:', event, d);
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+         // 工具提示函数
+        function showTooltip(event, d) {
+            tooltip.transition()
+                .duration(200)
+                .style("opacity", 0.9);
+            
+            const categoryNames = [
+                "JavaScript框架/库", 
+                "CSS框架/预处理器", 
+                "构建工具", 
+                "测试框架", 
+                "状态管理", 
+                "服务器端技术", 
+                "数据库", 
+                "API/数据格式"
+            ];
+            
+            tooltip.html(`
+                <h3>${d.id}</h3>
+                <p>${d.description}</p>
+                <p><strong>流行度:</strong> ${d.popularity}/100</p>
+                <div class="category" style="background: ${colorScale(d.group)};">
+                    ${categoryNames[d.group]}
+                </div>
+            `)
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 28) + "px");
+        }
+        
+        function hideTooltip() {
+            tooltip.transition()
+                .duration(500)
+                .style("opacity", 0);
+        }
+
+        // 显示节点详细信息
+        function showNodeDetails(event, d) {
+            const categoryNames = [
+                "JavaScript框架/库", 
+                "CSS框架/预处理器", 
+                "构建工具", 
+                "测试框架", 
+                "状态管理", 
+                "服务器端技术", 
+                "数据库", 
+                "API/数据格式"
+            ];
+
+            const connections = links.filter(l => l.source.id === d.id || l.target.id === d.id)
+                                .map(l => {
+                                    const connectedNode = l.source.id === d.id ? l.target : l.source;
+                                    return `<li>${connectedNode.id}</li>`;
+                                })
+                                .join('');
+
+                       const details = `
+                <h4>${d.id}</h4>
+                <p><strong>描述:</strong> ${d.description}</p>
+                <p><strong>类别:</strong> ${categoryNames[d.group]}</p>
+                <p><strong>流行度:</strong> ${d.popularity}/100</p>
+                <p><strong>连接的技术:</strong></p>
+                <ul style="column-count: 2; margin-top: 5px; padding-left: 15px;">
+                    ${connections}
+                </ul>
+            `;
+
+            document.getElementById('node-details').innerHTML = details;
+        }
+
+        // 在模拟过程中更新节点和连线信息
+        simulation.on('tick', () => {
+            link.attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node.attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+
+            text.attr('x', d => d.x)
+                .attr('y', d => d.y);
+        });
+
+        // 添加控制功能
+        document.getElementById("charge").addEventListener("input", function(e) {
+            const value = e.target.value;
+            document.getElementById("charge-value").textContent = value;
+            simulation.force("charge", d3.forceManyBody().strength(parseInt(value)))
+                .alpha(0.3)
+                .restart();
+        });
+        
+        document.getElementById("link-distance").addEventListener("input", function(e) {
+            const value = e.target.value;
+            document.getElementById("distance-value").textContent = value;
+            simulation.force("link", d3.forceLink(links).id(d => d.id).distance(parseInt(value)))
+                .alpha(0.3)
+                .restart();
+        });
+        
+        document.getElementById("gravity").addEventListener("input", function(e) {
+            const value = e.target.value;
+            document.getElementById("gravity-value").textContent = value;
+            simulation.force("x", d3.forceX(width / 2).strength(parseFloat(value)))
+                .force("y", d3.forceY(height / 2).strength(parseFloat(value)))
+                .alpha(0.3)
+                .restart();
+        });
+        
+        document.getElementById("reset-btn").addEventListener("click", function() {
+            // 重置滑块
+            document.getElementById("charge").value = -300;
+            document.getElementById("charge-value").textContent = -300;
+            document.getElementById("link-distance").value = 60;
+            document.getElementById("distance-value").textContent = 60;
+            document.getElementById("gravity").value = 0.1;
+            document.getElementById("gravity-value").textContent = 0.1;
+            
+            // 重置模拟
+            simulation.force("charge", d3.forceManyBody().strength(-300))
+                .force("link", d3.forceLink(links).id(d => d.id).distance(60))
+                .force("x", d3.forceX(width / 2).strength(0.05))
+                .force("y", d3.forceY(height / 2).strength(0.05))
+                .alpha(1)
+                .restart();
+            
+            // 重置节点位置
+            nodes.forEach(d => {
+                d.fx = null;
+                d.fy = null;
+            });
+            
+            // 重置缩放
+            svg.transition().duration(750).call(
+                d3.zoom().transform, 
+                d3.zoomIdentity
+            );
+            
+            // 清空节点详情
+            document.getElementById("node-details").innerHTML = 
+                "<p>悬停或点击节点查看技术详情</p>";
+        });
+
+    </script>
 </body>
 </html>
