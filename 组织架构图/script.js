@@ -29,6 +29,10 @@ import { companyData, deptColors } from './data.js';
 
         // 创建数据并转换为层级结构
         const root = d3.hierarchy(companyData);
+        root.descendants().forEach(node => {
+            node._children = node.children;
+            // node.children = null;
+        })
         treeLayout(root);
 
         // 创建缩放功能
@@ -41,7 +45,10 @@ import { companyData, deptColors } from './data.js';
         // 应用缩放
         svg.call(zoom);
 
-        // 添加连接线
+        console.log('links:', root.links());
+        
+
+        // 2. 添加连接线
         const link = container.append("g")
             .attr("class", "links")
             .selectAll("path")
@@ -50,9 +57,10 @@ import { companyData, deptColors } from './data.js';
             .attr("class", "link")
             .attr("d", d3.linkHorizontal()
                 .x(d => d.y)
-                .y(d => d.x));
+                .y(d => d.x))
+                .style('display', d => isLinkVisible(d) ? 'block' : 'none');
         
-        // 添加节点
+        // 3. 添加节点并创建点击事件
         const node = container.append("g")
             .attr("class", "nodes")
             .selectAll("g")
@@ -60,7 +68,11 @@ import { companyData, deptColors } from './data.js';
             .enter().append("g")
             .attr("class", "node")
             .attr("transform", d => `translate(${d.y},${d.x})`)
-            .on("click", toggleChildren)
+            .on("click", (e,d) => {
+                toggleNode(d);
+                updateTree();
+                showNodeDetails(d);
+            })
             .on("mouseover", showTooltip)
             .on("mouseout", hideTooltip);
         
@@ -97,102 +109,68 @@ import { companyData, deptColors } from './data.js';
             .attr("fill", "#ffb38a")
             .attr("font-size", "9px")
             .text(d => `${d.data.employees}人`);
-    
-        // 切换子节点展开/收起
-        function toggleChildren(event, d) {
-            // // 防止事件冒泡
-            // event.stopPropagation();
-            // if (d.children) {
-            //     d._children = d.children;
-            //     d.children = null;
-            // } else {
-            //     d.children = d._children;
-            //     d._children = null;
-            // }
-            // treeLayout(root);
-            // console.log('node:',root.descendants());
+
+        // 4. 切换节点展开/收起
+        function toggleNode(node) {
+            console.log('toggleNode:', node);
             
-            // // 更新节点
-            // const nodeUpdate = node.data(root.descendants(), d => d.data.id)
-            // .transition()
-            // .duration(500)
-            // .attr("transform", d => `translate(${d.y},${d.x})`);
+            if(node.children){
+                // 收起子节点
+                node._children = node.children;
+                node.children = null;
+            } else if(node._children){
+                // 展开子节点
+                node.children = node._children;
+                node._children = null;
+            }
+        }
 
-            // console.log('nodeUpdate:',nodeUpdate.node());
+        // 5. 判断节点状态
+        function isNodeVisible(node) {            
+            // 根节点始终可见
+            if (node.depth === 0) {
+                return true;
+            }
+            // 如果节点是折叠状态，则不显示
+            let ancestor = node.parent;
+            while (ancestor) {
+                if(!ancestor.children){
+                    return false; // 有祖先折叠
+                }
+                ancestor = ancestor.parent;
+            }
+            return true;
+        }
+
+        // 6. 判断连线是否可见
+        function isLinkVisible(link) {          
+            const source = link.source;
+            const target = link.target;
+            return isNodeVisible(source) && isNodeVisible(target);
+        }
+
+        // 7. 更新树
+        function updateTree() {
+            // 更新树布局
+            treeLayout(root);
+            // 更新节点位置
+            node.transition()
+            .duration(500)
+            .attr("transform", d => `translate(${d.y},${d.x})`)
+            .style('display', d => isNodeVisible(d) ? 'block' : 'none');
+            // 更新连接线
+            link
+            .transition()
+            .duration(500)
+            .attr("d", d3.linkHorizontal()
+                .x(d => d.y)
+                .y(d => d.x))
+            .style('display', d => isLinkVisible(d) ? 'block' : 'none');
             
-            // // 更新连接线
-            // const linkUpdate = link.data(root.links(), d => d.target.id)
-            // .transition()
-            // .duration(500)
-            // .attr("d", d3.linkHorizontal()
-            //     .x(d => d.y)
-            //     .y(d => d.x));
-
-            // // 添加节点
-            // const nodeEnter = nodeUpdate.enter().append("g")
-            //     .attr("class", "node")
-            //     .attr("transform", d => `translate(${d.y},${d.x})`)
-            //     .on("click", toggleChildren)
-            //     .on("mouseover", showTooltip)
-            //     .on("mouseout", hideTooltip);
-
-            // // 添加节点圆形
-            // nodeEnter.append("circle")
-            //     .attr("r", d => {
-            //         // 根据部门大小调整半径
-            //         const size = Math.max(8, Math.min(30, d.data.employees / 5));
-            //         return size;
-            //     })
-            //     .attr("fill", d => deptColors[d.data.department] || "#4facfe");
-
-            // // 添加节点文本
-            // nodeEnter.append("text")
-            //     .attr("dy", "0.38em")
-            //     .attr("x", d => d.children ? -15 : 15)
-            //     .attr("text-anchor", d => d.children ? "end" : "start")
-            //     .attr("font-size", "10px")
-            //     .text(d => d.data.name);
-
-            // // 添加部门文本
-            // nodeEnter.append("text")
-            //     .attr("dy", "1.8em")
-            //     .attr("x", d => d.children ? -15 : 15)
-            //     .attr("text-anchor", d => d.children ? "end" : "start")
-            //     .attr("font-size", "10px")
-            //     .text(d => d.data.department);
-
-            // // 添加员工数量文本
-            // nodeEnter.append("text")
-            //     .attr("dy", "3.1em")
-            //     .attr("x", d => d.children ? -15 : 15)
-            //     .attr("text-anchor", d => d.children ? "end" : "start")
-            //     .attr("fill", "#ffb38a")
-            //     .attr("font-size", "9px")
-            //     .text(d => `${d.data.employees}人`);
-
-            // // 删除节点
-            // const nodeExit = nodeUpdate.exit().transition()
-            //     .duration(500)
-            //     .attr("transform", d => `translate(${source.y},${source.x})`)
-            //     .remove();
-
-            // // 删除连接线
-            // const linkExit = linkUpdate.exit().transition()
-            //     .duration(500)
-            //     .attr("d", d => {
-            //         const o = {x: source.x, y: source.y};
-            //         return d3.linkHorizontal()
-            //             .x(d => d.y)
-            //             .y(d => d.x)(o);
-            //     })
-            //     .remove();
         }
     
         // 显示提示框
-        function showTooltip(event, d) {
-            console.log('e:',event);
-            console.log('d:',d);
-            
+        function showTooltip(event, d) {           
             
             // 防止事件冒泡
             event.stopPropagation();
@@ -268,7 +246,7 @@ import { companyData, deptColors } from './data.js';
                     }
                 }
                 expandAll(root);
-                updateChart();
+                updateTree();
             });
 
             document.getElementById('collapse-btn').addEventListener('click', function() {
@@ -284,7 +262,7 @@ import { companyData, deptColors } from './data.js';
                 }
                 
                 collapseAll(root);
-                updateChart();
+                updateTree();
             });
 
             document.getElementById("zoom-in").addEventListener("click", function() {
@@ -363,6 +341,10 @@ import { companyData, deptColors } from './data.js';
                 linkUpdate.exit().remove();
             }
 
-            // 初始化显示CEO信息
-            showNodeDetails(root);
+
         }
+
+        // 初始化显示CEO信息
+        showNodeDetails(root);
+
+        
